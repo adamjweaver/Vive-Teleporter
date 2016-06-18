@@ -3,23 +3,26 @@ using System.Collections;
 
 /// \brief A generic component that renders a border using the given polylines.  The borders are double sided and are oriented
 ///        upwards (ie normals are parallel to the XZ plane)
+[AddComponentMenu("Vive Teleporter/Border Renderer")]
 [ExecuteInEditMode]
 public class BorderRenderer : MonoBehaviour {
     private Mesh[] CachedMeshes;
     /// Material used to render the border mesh.  Note: UVs are set up so that v=0->bottom and v=1->top of border
+    [Tooltip("Material used to render the border mesh.  UV's are set up so that v=0->bottom and v=1->top.  u is stretched along each edge.")]
     public Material BorderMaterial;
 
     [System.NonSerialized]
     public Matrix4x4 Transpose = Matrix4x4.identity;
 
     [SerializeField] [Range(0,1)]
+    [Tooltip("Alpha (transparency) of the border mesh.")]
     public float BorderAlpha = 1.0f;
     private float LastBorderAlpha = 1.0f;
 
     private int AlphaShaderID = -1;
 
     /// Polylines that will be drawn.
-    public Vector3[][] Points {
+    public BorderPointSet[] Points {
         get
         {
             return _Points;
@@ -30,7 +33,7 @@ public class BorderRenderer : MonoBehaviour {
             RegenerateMesh();
         }
     }
-    private Vector3[][] _Points;
+    private BorderPointSet[] _Points;
 
     public float BorderHeight
     {
@@ -45,7 +48,8 @@ public class BorderRenderer : MonoBehaviour {
         }
     }
     [SerializeField]
-    private float _BorderHeight;
+    [Tooltip("Height of the border mesh, in meters.")]
+    private float _BorderHeight = 0.2f;
 
     void Update()
     {
@@ -75,14 +79,25 @@ public class BorderRenderer : MonoBehaviour {
     public void RegenerateMesh()
     {
         if (Points == null)
+        {
+            CachedMeshes = new Mesh[0];
             return;
+        }
         CachedMeshes = new Mesh[Points.Length];
-        for(int x=0;x<CachedMeshes.Length;x++)
-            CachedMeshes[x] = GenerateMeshForPoints(Points[x]);
+        for (int x = 0; x < CachedMeshes.Length; x++)
+        {
+            if (Points[x] == null || Points[x].Points == null)
+                CachedMeshes[x] = new Mesh();
+            else
+                CachedMeshes[x] = GenerateMeshForPoints(Points[x].Points);
+        }
     }
 	
 	private Mesh GenerateMeshForPoints(Vector3[] Points)
     {
+        if (Points.Length <= 1)
+            return new Mesh();
+
         Vector3[] verts = new Vector3[Points.Length * 2];
         Vector2[] uv = new Vector2[Points.Length * 2];
         for(int x=0;x<Points.Length;x++)
